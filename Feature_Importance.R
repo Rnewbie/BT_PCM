@@ -21,82 +21,26 @@ set.seed(1)
 # https://google-styleguide.googlecode.com/svn/trunk/Rguide.xml#filenames
 # and try to do your best to follow the guideline.
 
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-a <- cbind(SMOTE$Y, SMOTE$X)
-a <- a[order(SMOTE$Y),]
-a <- a[-1]
-set.seed(2)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-b <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-b <- b[order(SMOTE$Y),]
-b <- b[-1]
-set.seed(3)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-c <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-c <- c[order(SMOTE$Y),]
-c <- c[-1]
-set.seed(4)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-d <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-d <- d[order(SMOTE$Y),]
-d <- d[-1]
-set.seed(5)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-e <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-e <- e[order(SMOTE$Y),]
-e <- e[-1]
-set.seed(6)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-f <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-f <- f[order(SMOTE$Y),]
-f <- f[-1]
-set.seed(7)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-g <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-g <- g[order(SMOTE$Y),]
-g <- g[-1]
-set.seed(8)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-h <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-h <- h[order(SMOTE$Y),]
-h <- h[-1]
-set.seed(9)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-i <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-i <- i[order(SMOTE$Y),]
-i <- i[-1]
-set.seed(10)
-SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
-                   type= "ubSMOTE", perc.over = 100,
-                   perc.under=200, verbose=TRUE)
-j <- cbind(SMOTE$Y, SMOTE$X, row.names=NULL)
-j <- j[order(SMOTE$Y),]
-j <- j[-1]
-set.seed(100)
-Total <- a + b + c + d + e + f + g + h + i + j
-Average_SMOTE <- Total/10
+# Balancing Data with SMOTE Algorithm
+set.seed(1)
+results <- vector("list", 10)
+for ( i in 1:10) {
+  results[[i]] <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE),
+                           type="ubSMOTE", perc.over = 100,
+                           perc.under=200, verbose=TRUE)
+}
+smote_results <- lapply(results, function(x) {
+  a <- cbind(x$Y, x$X)
+  a <- a[order(x$Y),]
+  total <- a[-1]
+  return(total)
+})
+average_SMOTE <- Reduce("+", smote_results) / length(smote_results)
+
 ## Removeing Interacorrelation with the cutoff of 0.7
 set.seed(200)
-compoundSMOTE <- Average_SMOTE[, 1:44]
-proteinSMOTE <- Average_SMOTE[, 45:443]
+compoundSMOTE <- average_SMOTE[, 1:44]
+proteinSMOTE <- average_SMOTE[, 45:443]
 set.seed(400)
 compound_corr <- cor(compoundSMOTE)
 dim(compound_corr)
@@ -121,32 +65,21 @@ C_Active <- subset(InputKennardCompound, SMOTE_Y$Balanced_Activity == "Active")
 P_Inactive <- subset(InputKennardProtein, SMOTE_Y$Balanced_Activity == "Inactive")
 P_Active <- subset(InputKennardProtein, SMOTE_Y$Balanced_Activity == "Active")
 # Spliting the data set into training set and testing test using Kennard Stone Algorithm
-Inactive <- C_Inactive
-x <- data.frame(Inactive)
-sel <- kenStone(x[-1], k = 70, metric = "mahal", pc=2)
-trainInactiveCompound <- x[sel$model, ]
-testInactiveCompound <- x[sel$test, ]
-Active <- C_Active
-x <- data.frame(Active)
-sel <- kenStone(x[-1], k = 70, metric = "mahal", pc=2)
-trainActiveCompound <- x[sel$model, ]
-testActiveCompound <- x[sel$test, ]
-Inactive <- P_Inactive
-x <- data.frame(Inactive)
-sel <- kenStone(x[-1], k = 70, metric = "mahal", pc=2)
-trainInactiveProtein <- x[sel$model, ]
-testInactiveProtein <- x[sel$test, ]
-Active <- P_Active
-x <- data.frame(Active)
-sel <- kenStone(x[-1], k = 70, metric = "mahal", pc=2)
-trainActiveProtein <- x[sel$model, ]
-testActiveProtein <- x[sel$test, ]
+data <- list(C_Inactive = C_Inactive,
+             C_Active = C_Active,
+             P_Inactive = P_Inactive,
+             P_Active = P_Active)
+kenStone <- lapply(data, function(x) {
+  sel <- kenStone(x[-1], k = 70, metric="maha", pc=2)
+  train <- x[sel$model, ]
+  test <- x[sel$test, ]
+  return(list(train=train,test=test))  
+})
 # Preparing input data for Proteocheometrics modeling
-set.seed(567)
-C_Train <- rbind(trainInactiveCompound, trainActiveCompound)
-C_Test <- rbind(testInactiveCompound, testActiveCompound)
-P_Train <- rbind(trainInactiveProtein, trainActiveProtein)
-P_Test <- rbind(testInactiveProtein, testActiveProtein)
+C_Train <- rbind(kenStone$C_Inactive$train, kenStone$C_Active$train)
+C_Test <- rbind(kenStone$C_Inactive$test, kenStone$C_Active$test)
+P_Train <- rbind(kenStone$P_Inactive$train, kenStone$P_Active$train)
+P_Test <- rbind(kenStone$P_Inactive$test, kenStone$P_Active$test)
 set.seed(22)
 c <- C_Train
 p <- P_Train
