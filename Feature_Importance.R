@@ -9,8 +9,6 @@ library(caret)
 library(prospectr)
 library(gridExtra)
 library(Rcpi)
-# Balancing Data with SMOTE Algorithm
-set.seed(1)
 
 # This is where you should use for loop and please create a vector to
 # store results instead of a,b,c,d...  Writing code this way is
