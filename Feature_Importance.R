@@ -11,6 +11,16 @@ library(gridExtra)
 library(Rcpi)
 # Balancing Data with SMOTE Algorithm
 set.seed(1)
+
+# This is where you should use for loop and please create a vector to
+# store results instead of a,b,c,d...  Writing code this way is
+# error-prone and very hard to debug because the code is redundant.
+
+# At first glance, the code writing style is totally inconsistent.
+# Please consult
+# https://google-styleguide.googlecode.com/svn/trunk/Rguide.xml#filenames
+# and try to do your best to follow the guideline.
+
 SMOTE <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE), 
                    type= "ubSMOTE", perc.over = 100,
                    perc.under=200, verbose=TRUE)
