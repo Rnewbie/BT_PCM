@@ -1,0 +1,51 @@
+---
+title: "PCM BT Pipeline"
+author: "Saw Simeon, Likit Preeyanon, Watshara Shoombuatong, Virapong Prachayasittikul,
+Maris Lapins, Jarl E. S. Wikberg and Chanin Nantasenamat"
+date: "April 3, 2015"
+output: pdf_document
+---
+
+% I don't think we need to provide info on installing R and R packages.
+
+Install all required packages.
+```{r eval=FALSE}
+install.packages("unbalanced")
+install.packages("corrplot")
+install.packages("caret")
+install.packages("RWeka")
+install.packages("prospectr")
+install.packages("gridExtra")
+install.packages("ggplot2")
+install.packages("C50")
+install.packages("randomForest")
+install.packages("kernlab")
+install.packages("nnet")
+```
+
+One can  install packagees from Bioconductor by entering the source before the
+package can be installed. *When installing R packages from Biconductor, please
+avoid using proxy internet connection*
+
+```{r eval=FALSE}
+source("http://bioconductor.org/biocLite.R")
+biocLite("Rcpi")
+```
+
+Downloaded packages  will be attached to the environment in order to run source
+code.
+
+```{r eval=FALSE}
+set.seed(800)
+s = c("unbalanced", "corrplot", "caret", "RWeka", "prospectr", "gridExtra",
+      "ggplot2", "C50", "randomForest", "kernlab", "nnet", "Rcpi")
+sapply(s, require,character.only=TRUE)
+```
+% The project path should not be hard coded.  We can tell users to run all the
+% code inside BT_PCM directory.  That way, we can use relative path instead of
+% absolute path, which is not flexible.
+
+Run this command to reproduce results.
+
+```{r eval=FALSE}
+source("Feature_Importance.R")
