@@ -48,7 +48,7 @@ Then, we will move the present directory to where the BT_PCM folder is.
 ```{r eval=FALSE}
 setwd("~/Desktop/PythonKid/BT_PCM") ## Path may be differenct depending on users
 ```
-Once, the working directory is set, we can finally reproduce the results of the BT_PCM by calling source function. Following is an example to reproduce results of the study.
+Once, the working directory is set, we can finally reproduce the results of the BT_PCM by calling source function. Following is an example to reproduce results of the study. From the results of the performance tables to the figure of importance, pdf files will be saved.
 ```{r eval=FALSE}
 source("Feature_Importance.R")
 ```
