@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+pdf("Fig_PCA.pdf", width = 20, height = 10)
 Biological_Space <- read.csv("data/Biological_Space.csv", header=TRUE)
 df <- data.frame(Biological_Space[,2:400])
 df = df[, -nearZeroVar(df)]
@@ -7,19 +8,29 @@ pca <- prcomp(df, retx=TRUE,scale.=TRUE)
 scores <- pca$x[,1:3]
 km <- kmeans(scores, center=3, nstart=5)
 Protein <- Biological_Space[,1]
+ProteinNumber <- c("10", "11", "12", "13", "14", "15", "16", "9", "8", "7", "6", "5", "4", "3", "2", "1")
 ggdata <- data.frame(scores, Cluster=km$cluster)
-ggdata <- cbind(Protein, ggdata)
-set.seed(32233)
-pdf("Biological Space.pdf", width = 18, height = 18)
-ggplot(ggdata) +
+ggdata <- cbind(ProteinNumber, ggdata)
+set.seed(23)
+x <- ggplot(ggdata) +
   geom_point(aes(x=PC1, y=PC2,
                  color=factor(Cluster)), size=5, shape=20) +
-  ggtitle("Biological Space") +
+  ggtitle("A") +
   stat_ellipse(aes(x=PC1,y=PC2,fill=factor(Cluster)),
                geom="polygon", level=0.95, alpha=0.2) +
   guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
-  geom_text(aes(x=PC1, y=PC2, label=Protein), size=2, hjust=0, alpha=0.6)
-dev.off()
+  geom_text(aes(x=PC1, y=PC2, label=ProteinNumber), size=8, hjust=0, vjust=-0.5, alpha=0.45) +
+  theme(
+    legend.position=("none"),
+    plot.title = element_text(size=20, face="bold", colour="black", vjust = 2, hjust=-0.07),
+    axis.text.y = element_text(size = 15),
+    axis.ticks.length = unit(0.3, "cm"),
+    axis.text.x = element_text(size = 15),
+    legend.title=element_blank(),
+    axis.title.x = element_text(color="black", size=20),
+    axis.title.y = element_text(color="black", size=20)) + 
+  scale_y_continuous(limits = c(-15,20), expand = c(0,0)) +
+  scale_x_continuous(limits = c(-15,20), expand = c(0,0)) 
 ## Compounds
 set.seed(42342)
 Chemical_Space <- read.csv("data/Chemical_Space.csv", header=TRUE)
@@ -28,34 +39,31 @@ pca <- prcomp(df, retx=TRUE,scale.=TRUE)
 set.seed(34233)
 scores <- pca$x[,1:3]
 km <- kmeans(scores, center=2, nstart=5)
-Compound <- c("6,7-dimethoxy-1,3-dihydro-2-benzofuran-1-one",
-              "(2S)-2-amino-3-phenylpropanoic acid",
-              "(2S)-2-amino-3-(1H-imidazol-4-yl)propanoic acid",
-              "1,2-diethyl benzene-1,2-dicarboxylate",
-              "(prop-2-en-1-yl)thiourea",
-              "5-nitro-1,3-thiazol-2-amine",
-              "2,2,2-trichloroethane-1,1-diol",
-              "(2R)-2-aminopropanoic acid",
-              "3,4-dinitrobenzoic acid",
-              "pentanedinitrile",
-              "4-(pyridin-4-yl)pyridine",
-              "pent-1-en-3-ol",
-              "6-ethoxy-4,4-dimethyl-1,3-diazinane-2-thione",
-              "2-(4-hydroxy-6-methyl-2-sulfanylidene-2,5-dihydropyrimidin-5-yl)acetate",
-              "2-sulfanylidene-1,2,3,4-tetrahydropyrimidin-4-one",
-              "2-{2-ethoxy-4-[(2,4,6-trioxo-1,3-diazinan-5-ylidene)methyl]phenoxy}acetic acid",
-              "3-{3,5-dioxo-10-oxa-4-azatricyclo[5.2.1.0]dec-8-en-4-yl}benzoic acid",
-              "[(E)-{amino[(4-fluorophenyl)amino]methylidene}amino]methanimidamide")
+Compound <- c("1", "2", "3", "4", "5", "6", "7",
+              "8", "9", "10", "11", "12", "13",
+              "14", "15", "16", "17", "18")
 ggdata <- data.frame(scores, Cluster=km$cluster)
 ggdata <- cbind(Compound, ggdata)
 set.seed(10093)
-pdf("Chemical Space.pdf", width = 14, height = 14)
-ggplot(ggdata) +
+y <- ggplot(ggdata) +
   geom_point(aes(x=PC1, y=PC2,
                  color=factor(Cluster)), size=5, shape=20) +
-  ggtitle("Chemical Space") +
+  ggtitle("B") +
   stat_ellipse(aes(x=PC1,y=PC2,fill=factor(Cluster)),
                geom="polygon", level=0.95, alpha=0.2) +
   guides(color=guide_legend("Cluster"),fill=guide_legend("Cluster")) +
-  geom_text(aes(x=PC1, y=PC2, label=Compound), size=2, hjust=0, alpha=0.6)
+  geom_text(aes(x=PC1, y=PC2, label=Compound), size=8, hjust=0, vjust=-0.5, alpha=0.45) +
+  theme(
+    legend.position=("none"),
+    plot.title = element_text(size=20, face="bold", colour="black", vjust = 2, hjust=-0.07),
+    axis.text.y = element_text(size = 15),
+    axis.text.x = element_text(size = 15),
+    axis.ticks.length = unit(0.3, "cm"),
+    legend.title=element_blank(),
+    axis.title.x = element_text(color="black", size=20),
+    axis.title.y = element_blank()) + 
+  scale_y_continuous(limits = c(-15,20), expand = c(0,0)) +
+  scale_x_continuous(limits = c(-15,20), expand = c(0,0)) 
+
+grid.arrange(x, y, nrow=1)
 dev.off()

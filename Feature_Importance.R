@@ -10,21 +10,31 @@ library(caret)
 library(prospectr)
 library(gridExtra)
 library(Rcpi)
+
+# This is where you should use for loop and please create a vector to
+# store results instead of a,b,c,d...  Writing code this way is
+# error-prone and very hard to debug because the code is redundant.
+
+# At first glance, the code writing style is totally inconsistent.
+# Please consult
+# https://google-styleguide.googlecode.com/svn/trunk/Rguide.xml#filenames
+# and try to do your best to follow the guideline.
+
 # Balancing Data with SMOTE Algorithm
 set.seed(1)
-results <- vector("list", 10)
+results <- list(10)
 for ( i in 1:10) {
   results[[i]] <- ubBalance(X=cbind(C,P), Y=factor(Y$Before_SMOTE),
                            type="ubSMOTE", perc.over = 100,
-                           perc.under=200, verbose=TRUE)
-  
+                           perc.under=200, verbose=TRUE)  
 }
-set.seed(400)
+set.seed(4)
 smote_results <- lapply(results, function(x) {
   a <- cbind(x$Y, x$X)
   a <- a[order(x$Y),]
   x <- a[-1]
   return(x)
+
 })
 average_SMOTE <- Reduce("+", smote_results) / length(smote_results)
 
@@ -32,6 +42,10 @@ average_SMOTE <- Reduce("+", smote_results) / length(smote_results)
 set.seed(200)
 compoundSMOTE <- average_SMOTE[, 1:44]
 proteinSMOTE <- average_SMOTE[, 45:443]
+<<<<<<< HEAD
+=======
+set.seed(400)
+>>>>>>> 2eba7529991c26e719b83ffb0fbd808e871e6636
 compound_corr <- cor(compoundSMOTE)
 dim(compound_corr)
 compound_corr <- compound_corr[1:44, 1:44]
@@ -54,7 +68,10 @@ C_Active <- subset(InputKennardCompound, SMOTE_Y$Balanced_Activity == "Active")
 P_Inactive <- subset(InputKennardProtein, SMOTE_Y$Balanced_Activity == "Inactive")
 P_Active <- subset(InputKennardProtein, SMOTE_Y$Balanced_Activity == "Active")
 # Spliting the data set into training set and testing test using Kennard Stone Algorithm
+<<<<<<< HEAD
 set.seed(3422)
+=======
+>>>>>>> 2eba7529991c26e719b83ffb0fbd808e871e6636
 data <- list(C_Inactive = C_Inactive,
              C_Active = C_Active,
              P_Inactive = P_Inactive,
@@ -65,12 +82,20 @@ kenStone <- lapply(data, function(x) {
   test <- x[sel$test, ]
   return(list(train=train,test=test))  
 })
+<<<<<<< HEAD
 
 C_Train <- rbind(kenStone$C_Inactive$train, kenStone$C_Active$train)
 C_Test <- rbind(kenStone$C_Inactive$test, kenStone$C_Active$test)
 P_Train <- rbind(kenStone$P_Inactive$train, kenStone$P_Active$train)
 P_Test <- rbind(kenStone$P_Inactive$test, kenStone$P_Active$test)
 # Preparing input data for Proteocheometrics modeling
+=======
+# Preparing input data for Proteocheometrics modeling
+C_Train <- rbind(kenStone$C_Inactive$train, kenStone$C_Active$train)
+C_Test <- rbind(kenStone$C_Inactive$test, kenStone$C_Active$test)
+P_Train <- rbind(kenStone$P_Inactive$train, kenStone$P_Active$train)
+P_Test <- rbind(kenStone$P_Inactive$test, kenStone$P_Active$test)
+>>>>>>> 2eba7529991c26e719b83ffb0fbd808e871e6636
 set.seed(22)
 c <- C_Train
 p <- P_Train
