@@ -4,6 +4,7 @@ library(C50)
 library(dplyr)
 library(ROCR)
 library(ggplot2)
+library(randomForest)
 index = c(20,44,26,31,11,42,17,34,29,39,9,23,38,22,24,3,33,8,18,21,5,37,28,14,15,35,30,
           41,1,43,177,211,262,58,151,218,88,231,180,274,256,104,84,205,65,175,279,49,59,
           145,174,242,196,283,51,219,273,260,206,74)
@@ -30,190 +31,14 @@ PxP_train <- PxP_data[index,]
 PxP_test <- PxP_data[-index,]
 
 
-## C_50 training
-C50_training <- function(x) {
-  Active <- subset(x, activity == "Active")
-  Inactive <- subset(x, activity == "Inactive")
-  results <- list(100)
-  for (i in 1:100) {
-    train_active <- sample_n(Active, size = 35)
-    test_active <- sample_n(Active, size = 9)
-    train_inactive <- sample_n(Inactive, size = 195)
-    test_inactive <- sample_n(Inactive, size = 49)
-    train <- rbind(train_active, train_inactive)
-    test <- rbind(test_active, test_inactive)
-    model_train <- C5.0(activity~., data = train)
-    actual <- train$activity
-    prediction <- predict(model_train, train)
-    confusionmatrix  <- confusionMatrix(prediction, actual)
-    table <- confusionmatrix$table
-    results[[i]] <- as.numeric(table)
-  }
-  return(results)
-}
-
-mean_and_sd <- function(x) {
-  c(round(mean(x, na.rm = TRUE), digits = 4),
-    round(sd(x, na.rm = TRUE), digits = 4))
-}
-
-C50_train <- function(x) {
-  ok <- C50_training(x)
-  results <- data.frame(ok)
-  data <- data.frame(results)
-  m = ncol(data)
-  ACC  <- matrix(nrow = m, ncol = 1)
-  SENS  <- matrix(nrow = m, ncol = 1)
-  SPEC  <-matrix(nrow = m, ncol = 1)
-  MCC <- matrix(nrow = m, ncol = 1)
-  
-  for(i in 1:m){ 
-    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
-    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
-    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
-    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
-    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
-    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
-    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
-    
-    
-    MCC[i,1]  = MCC1/MCC4
-  }
-  results_ACC <- mean_and_sd(ACC)
-  results_SENS <- mean_and_sd(SENS)
-  results_SPEC <- mean_and_sd(SPEC)
-  results_MCC <- mean_and_sd(MCC)
-  return(data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
-}
-
-
-C50_protein_results <- C50_train(protein_alone_data)
-C50_compound_results <- C50_train(compound_alone_data)
-C50_CxP_training_results <- C50_train(CxP_data)
-C50_CxC_training_results <- C50_train(CxC_data)
-C50_PxP_training_results <- C50_train(PxP_data)
-
-### 10 fold cross validation model
-C50_10fold <- function(x) {
-  Active <- subset(x, activity = "Active")
-  Inactive <- subset(x, activity = "Inactive")
-  results <- list(100)
-  for (i in 1:100) {
-    train_active <- sample_n(Active, size = 35)
-    test_active <- sample_n(Active, size = 9)
-    train_inactive <- sample_n(Inactive, size = 195)
-    test_inactive <- sample_n(Inactive, size = 49)
-    myData <- rbind(train_active, train_inactive)
-    test <- rbind(test_active, test_inactive)
-    myData$activity <- factor(as.character(myData$activity))
-    k = 10
-    index <- sample(1:k, nrow(myData), replace = TRUE)
-    folds <- 1:k
-    for (j in 1:k)
-    training <- subset(myData, index %in% folds[-j])
-    testing <- subset(myData, index %in% c(j))
-    mymodel <- C5.0(activity~., data = training)
-    actual <- testing$activity
-    prediction <- predict(mymodel, testing)
-    confusionmatrix  <- confusionMatrix(prediction, actual)
-    table <- confusionmatrix$table
-    results[[i]] <- as.numeric(table)
-  }
-  return(results)
-}
-
-C50_cross_validation <- function(x) {
-  ok <- C50_10fold(x)
-  results <- data.frame(ok)
-  data <- data.frame(reuslts)
-  m = ncol(data)
-  ACC  <- matrix(nrow = m, ncol = 1)
-  SENS  <- matrix(nrow = m, ncol = 1)
-  SPEC  <-matrix(nrow = m, ncol = 1)
-  MCC <- matrix(nrow = m, ncol = 1)
-  
-  for(i in 1:m){ 
-    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
-    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
-    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
-    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
-    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
-    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
-    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
-    
-    
-    MCC[i,1]  = MCC1/MCC4
-  }
-  results_ACC <- mean_and_sd(ACC)
-  results_SENS <- mean_and_sd(SENS)
-  results_SPEC <- mean_and_sd(SPEC)
-  results_MCC <- mean_and_sd(MCC)
-  return(data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
-}
-
-protein_alone_cross_validation <- C50_cross_validation(protein_alone_data)
-compound_alone_cross_validation <- C50_cross_validation(compound_alone_data)
-CxP_cross_validation <- C50_cross_validation(CxP_data)
-CxC_cross_validation <- C50_cross_validation(CxC_data)
-PxP_cross_validation <- C50_cross_validation(PxP_data)
-
-### C50 modeling testing results
-C50_testing <- function(x) {
-  Active <- subset(x, activity = "Active")
-  Inactive <- subset(x, activity = "Inactive")
-  results <- list(100)
-  for (i in 1:100) {
-    train_active <- sample_n(Active, size = 35)
-    test_active <- sample_n(Active, size = 9)
-    train_inactive <- sample_n(Inactive, size = 195)
-    test_inactive <- sample_n(Inactive, size = 49)
-    train <- rbind(train_active, train_inactive)
-    test <- rbind(test_active, test_inactive)
-    model_train <- C5.0(activity~., data = train)
-    actual <- test$activity
-    prediction <- predict(model_train, test)
-    confusionmatrix  <- confusionMatrix(prediction, actual)
-    table <- confusionmatrix$table
-    results[[i]] <- as.numeric(table)
-  }
-  return(results)
-}
-
-C50_external <- function(x) {
-  ok <- C50_testing(x)
-  results <- data.frame(ok)
-  data <- data.frame(results)
-  m = ncol(data)
-  ACC  <- matrix(nrow = m, ncol = 1)
-  SENS  <- matrix(nrow = m, ncol = 1)
-  SPEC  <-matrix(nrow = m, ncol = 1)
-  MCC <- matrix(nrow = m, ncol = 1)
-  
-  for(i in 1:m){ 
-    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
-    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
-    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
-    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
-    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
-    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
-    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
-    
-    
-    MCC[i,1]  = MCC1/MCC4
-  }
-  results_ACC <- mean_and_sd(ACC)
-  results_SENS <- mean_and_sd(SENS)
-  results_SPEC <- mean_and_sd(SPEC)
-  results_MCC <- mean_and_sd(MCC)
-  return(data.frame(c(results_ACC, results_SENS, results_SPEC, results_MCC)))
-}
-
-
-### Maris question for the PCM
+### Boss email Morning RF, ANN, SVM (three kernel)
 training_randomforest <- function(x) {
   fit <- randomForest(activity~., data = x)
   actual <- x$activity
   prediction <- predict(fit, x)
+  pred <- prediction(predict(fit, newdata = x, type = "prob")[, 2], x$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
   confusionmatrix  <- confusionMatrix(prediction, actual)
   table <- confusionmatrix$table
   results <- as.numeric(table)
@@ -236,13 +61,581 @@ training_randomforest <- function(x) {
     
     MCC[i,1]  = MCC1/MCC4
   }
-  return(c(ACC, SENS, SPEC, MCC))
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
 }
 
-protein_alone_randomforest <- training_randomforest(protein_alone_train)
-compound_alone_randomforest <- training_randomforest(compound_alone_train)
-CxP_randomforest <- training_randomforest(CxP_train)
-CxC_randomforest <- training_randomforest(PxP_train)
+### 10 fold cross validation RF
+
+CV_randomforest <- function(x) {
+  myData <- x
+  myData$activity <- factor(as.character(myData$activity))
+  myRes <- data.frame()
+  k = 10
+  index <- sample(1:k, nrow(myData), replace = TRUE)
+  folds <- 1:k
+  for (j in 1:k)
+    training <- subset(myData, index %in% folds[-j])
+  testing <- subset(myData, index %in% c(j))
+  fit <- randomForest(activity~., data = training)
+  actual <- testing$activity
+  prediction <- predict(fit, testing)
+  pred <- prediction(predict(fit, newdata = testing, type = "prob")[, 2], testing$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+
+#### randomForest Testing
+
+testing_randomforest <- function(x) {
+  fit <- randomForest(activity~., data = x)
+  actual <- CxC_test$activity
+  prediction <- predict(fit, CxC_test)
+  pred <- prediction(predict(fit, newdata = CxC_test, type = "prob")[, 2], CxC_test$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+
+#### Artificial neural network
+
+training_neural <- function(x) {
+  fit <- nnet(activity~., data = x, size = 5, MaxNWts = 4000, na.action = na.omit)
+  actual <- x$activity
+  prediction <- predict(fit, x, type = "class")
+  pred <- prediction(predict(fit, newdata = x, type = "raw")[, 1], x$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+
+
+
+#### CV ANN
+
+CV_neural <- function(x) {
+  myData <- x
+  myData$activity <- factor(as.character(myData$activity))
+  myRes <- data.frame()
+  k = 10
+  index <- sample(1:k, nrow(myData), replace = TRUE)
+  folds <- 1:k
+  for (j in 1:k)
+    training <- subset(myData, index %in% folds[-j])
+  testing <- subset(myData, index %in% c(j))
+  fit <- nnet(activity~., data = x, size = 5, MaxNWts = 4000, na.action = na.omit)
+  actual <- testing$activity
+  prediction <- predict(fit, testing, type = "class")
+  pred <- prediction(predict(fit, newdata = testing, type = "raw")[, 1], factor(testing$activity))
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+#### testing for artificial neural network
+
+testing_neural <- function(x) {
+  fit <- nnet(activity~., data = x, size = 5, MaxNWts = 4000, na.action = na.omit)
+  actual <- CxC_test$activity
+  prediction <- predict(fit, CxC_test, type = "class")
+  pred <- prediction(predict(fit, newdata = CxC_test, type = "raw")[, 1], CxC_test$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+
+#### SVM radial
+
+training_SVM_radial <- function(x) {
+  fit <- svm(activity~., data = x, na.action = na.omit, scale = FALSE, kernel = "radial", probability = TRUE)
+  actual <- x$activity
+  prediction <- predict(fit, x, type = "class")
+  prediction_auc <- predict(fit, newdata = x, probability = TRUE)
+  attributes_auc <- data.frame(attributes(prediction_auc))[, 5]
+  pred <- prediction(predictions = attributes_auc, x$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+
+### CV Radial
+
+CV_radial <- function(x) {
+  myData <- x
+  myData$activity <- factor(as.character(myData$activity))
+  myRes <- data.frame()
+  k = 10
+  index <- sample(1:k, nrow(myData), replace = TRUE)
+  folds <- 1:k
+  for (j in 1:k)
+    training <- subset(myData, index %in% folds[-j])
+  testing <- subset(myData, index %in% c(j))
+  fit <- svm(activity~., data = training, na.action = na.omit, scale = FALSE, kernel = "radial", probability = TRUE)
+  actual <- testing$activity
+  prediction <- predict(fit, testing, type = "class")
+  prediction_auc <- predict(fit, newdata = testing, probability = TRUE)
+  attributes_auc <- attributes(prediction_auc)$probabilities[, 2]
+  pred <- prediction(predictions = attributes_auc, testing$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+#### Testing SVM radial
+
+testing_SVM_radial <- function(x) {
+  fit <- svm(activity~., data = x, na.action = na.omit, scale = FALSE, kernel = "radial", probability = TRUE)
+  actual <- CxC_test$activity
+  prediction <- predict(fit, CxC_test, type = "class")
+  prediction_auc <- predict(fit, newdata = CxC_test, probability = TRUE)
+  attributes_auc <- data.frame(attributes(prediction_auc))[, 5]
+  pred <- prediction(predictions = attributes_auc, CxC_test$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+### Training SVM linear 
+
+training_SVM_linear <- function(x) {
+  fit <- svm(activity~., data = x, na.action = na.omit, scale = FALSE, kernel = "linear", probability = TRUE)
+  actual <- x$activity
+  prediction <- predict(fit, x, type = "class")
+  prediction_auc <- predict(fit, newdata = x, probability = TRUE)
+  attributes_auc <- data.frame(attributes(prediction_auc))[, 5]
+  pred <- prediction(predictions = attributes_auc, x$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+### 10 fold CV SVM linear
+
+
+CV_linear <- function(x) {
+  myData <- x
+  myData$activity <- factor(as.character(myData$activity))
+  myRes <- data.frame()
+  k = 10
+  index <- sample(1:k, nrow(myData), replace = TRUE)
+  folds <- 1:k
+  for (j in 1:k)
+    training <- subset(myData, index %in% folds[-j])
+  testing <- subset(myData, index %in% c(j))
+  fit <- svm(activity~., data = training, na.action = na.omit, scale = FALSE, kernel = "linear", probability = TRUE)
+  actual <- testing$activity
+  prediction <- predict(fit, testing, type = "class")
+  prediction_auc <- predict(fit, newdata = testing, probability = TRUE)
+  attributes_auc <- attributes(prediction_auc)$probabilities[, 2]
+  pred <- prediction(predictions = attributes_auc, testing$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+### Testing SVM linear
+
+testing_SVM_linear <- function(x) {
+  fit <- svm(activity~., data = x, na.action = na.omit, scale = FALSE, kernel = "linear", probability = TRUE)
+  actual <- CxC_test$activity
+  prediction <- predict(fit, CxC_test, type = "class")
+  prediction_auc <- predict(fit, newdata = CxC_test, probability = TRUE)
+  attributes_auc <- data.frame(attributes(prediction_auc))[, 5]
+  pred <- prediction(predictions = attributes_auc, CxC_test$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+### Training SVM polynomial
+
+training_SVM_polynomial <- function(x) {
+  fit <- svm(activity~., data = x, na.action = na.omit, scale = FALSE, kernel = "polynomial", probability = TRUE)
+  actual <- x$activity
+  prediction <- predict(fit, x, type = "class")
+  prediction_auc <- predict(fit, newdata = x, probability = TRUE)
+  attributes_auc <- data.frame(attributes(prediction_auc))[, 5]
+  pred <- prediction(predictions = attributes_auc, x$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+### SVM polynomial 10-CV
+
+CV_polynomial <- function(x) {
+  myData <- x
+  myData$activity <- factor(as.character(myData$activity))
+  myRes <- data.frame()
+  k = 10
+  index <- sample(1:k, nrow(myData), replace = TRUE)
+  folds <- 1:k
+  for (j in 1:k)
+    training <- subset(myData, index %in% folds[-j])
+  testing <- subset(myData, index %in% c(j))
+  fit <- svm(activity~., data = training, na.action = na.omit, scale = FALSE, kernel = "polynomial", probability = TRUE)
+  actual <- testing$activity
+  prediction <- predict(fit, testing, type = "class")
+  prediction_auc <- predict(fit, newdata = testing, probability = TRUE)
+  attributes_auc <- attributes(prediction_auc)$probabilities[, 2]
+  pred <- prediction(predictions = attributes_auc, testing$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+### SVM testing Polynomial
+
+testing_SVM_polynomial <- function(x) {
+  fit <- svm(activity~., data = x, na.action = na.omit, scale = FALSE, kernel = "polynomial", probability = TRUE)
+  actual <- CxC_test$activity
+  prediction <- predict(fit, CxC_test, type = "class")
+  prediction_auc <- predict(fit, newdata = CxC_test, probability = TRUE)
+  attributes_auc <- data.frame(attributes(prediction_auc))[, 5]
+  pred <- prediction(predictions = attributes_auc, CxC_test$activity)
+  perf.auc <- performance(pred, measure = "auc")
+  AUC <- unlist(perf.auc@y.values)
+  confusionmatrix  <- confusionMatrix(prediction, actual)
+  table <- confusionmatrix$table
+  results <- as.numeric(table)
+  data <- data.frame(results)
+  m = ncol(data)
+  ACC  <- matrix(nrow = m, ncol = 1)
+  SENS  <- matrix(nrow = m, ncol = 1)
+  SPEC  <-matrix(nrow = m, ncol = 1)
+  MCC <- matrix(nrow = m, ncol = 1)
+  
+  for(i in 1:m){ 
+    ACC[i,1]  = (data[1,i]+data[4,i])/(data[1,i]+data[2,i]+data[3,i]+data[4,i])*100
+    SENS[i,1]  =  (data[4,i])/(data[3,i]+data[4,i])*100
+    SPEC[i,1]  = (data[1,i]/(data[1,i]+data[2,i]))*100
+    MCC1      = (data[1,i]*data[4,i]) - (data[2,i]*data[3,i])
+    MCC2      =  (data[4,i]+data[2,i])*(data[4,i]+data[3,i])
+    MCC3      =  (data[1,i]+data[2,i])*(data[1,i]+data[3,i])
+    MCC4  =  sqrt(MCC2)*sqrt(MCC3)
+    
+    
+    MCC[i,1]  = MCC1/MCC4
+  }
+  return(round(c(ACC, SENS, SPEC, AUC, MCC), digits = 2))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
